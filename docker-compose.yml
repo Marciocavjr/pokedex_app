@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # 1. CONTAINER DO BANCO DE DADOS (PostgreSQL)
+  banco-dados:
+    image: postgres:15-alpine
+    container_name: meu_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: mestre_pokemon
+      POSTGRES_PASSWORD: senha_secreta_123
+      POSTGRES_DB: pokedex_db
+    # NOTA: Não colocamos a propriedade "ports" aqui.
+    # Isso significa que o banco está 100% invisível para o seu Chromebook (host).
+    networks:
+      - rede-pokedex
+
+  # 2. CONTAINER DA APLICAÇÃO WEB (Node.js)
+  aplicacao-web:
+    image: node:18-alpine
+    container_name: meu_node_app
+    restart: always
+    # O comando abaixo entra na pasta, instala os pacotes e inicia o servidor
+    command: sh -c "cd /usr/src/app && npm install && npm start"
+    volumes:
+      - ./app:/usr/src/app
+    ports:
+      - "3000:3000" # Só expomos a porta do app web para você testar no navegador
+    environment:
+      - DB_HOST=banco-dados # Viu? O app acha o banco usando o NOME do serviço!
+      - DB_USER=mestre_pokemon
+      - DB_PASSWORD=senha_secreta_123
+      - DB_NAME=pokedex_db
+    depends_on:
+      - banco-dados
+    networks:
+      - rede-pokedex
+
+# CRIANDO A REDE ISOLADA
+networks:
+  rede-pokedex:
+    driver: bridge

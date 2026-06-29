@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minha Pokédex Docker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <h1>Pokédex Dockerizada</h1>
+    <p>Cadastre e gerencie seus Pokémons com conexão segura em banco de dados!</p>
+  </header>
+
+  <main class="container">
+    <section class="form-secao">
+      <h2>Capturar Novo Pokémon</h2>
+      <form id="pokemonForm">
+        <div class="campo">
+          <label for="nome">Nome do Pokémon:</label>
+          <input type="text" id="nome" required placeholder="Ex: Pikachu">
+        </div>
+
+        <div class="campo">
+          <label for="sexo">Sexo:</label>
+          <select id="sexo" required>
+            <option value="Macho">Macho ♂</option>
+            <option value="Fêmea">Fêmea ♀</option>
+            <option value="Indefinido">Indefinido ⚲</option>
+          </select>
+        </div>
+
+        <div class="campo-duplo">
+          <div class="campo">
+            <label for="tipo1">Tipo Principal:</label>
+            <input type="text" id="tipo1" required placeholder="Ex: Elétrico">
+          </div>
+          <div class="campo">
+            <label for="tipo2">Segundo Tipo (Opcional):</label>
+            <input type="text" id="tipo2" placeholder="Ex: Aço">
+          </div>
+        </div>
+
+        <div class="campo">
+          <label for="imagem">Link da Imagem (URL):</label>
+          <input type="url" id="imagem" placeholder="https://exemplo.com/pikachu.png">
+        </div>
+
+        <button type="submit">Adicionar à Pokédex</button>
+      </form>
+    </section>
+
+    <section class="lista-secao">
+      <h2>Meus Pokémons</h2>
+      <div id="pokedexLista" class="pokedex-grid">
+        </div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('pokemonForm');
+    const lista = document.getElementById('pokedexLista');
+
+    // Função para buscar os Pokémons do banco e mostrar na tela
+    async function buscarPokemons() {
+      lista.innerHTML = '<p>Carregando Pokédex...</p>';
+      try {
+        const resposta = await fetch('/api/pokemons');
+        const pokemons = await resposta.json();
+        
+        lista.innerHTML = ''; // Limpa a mensagem de carregando
+        
+        if (pokemons.length === 0) {
+          lista.innerHTML = '<p class="vazio">Nenhum Pokémon cadastrado ainda. Vá capturar alguns!</p>';
+          return;
+        }
+
+        pokemons.forEach(pokemon => {
+          const card = document.createElement('div');
+          card.className = 'pokemon-card';
+          
+          // Se não tiver imagem, usa uma padrão
+          const urlImagem = pokemon.imagem || 'https://via.placeholder.com/150?text=Sem+Foto';
+
+          card.innerHTML = `
+            <img src="${urlImagem}" alt="${pokemon.nome}">
+            <h3>${pokemon.nome}</h3>
+            <p><strong>Sexo:</strong> ${pokemon.sexo}</p>
+            <div class="tipos">
+              <span class="tipo-tag">${pokemon.tipo1}</span>
+              ${pokemon.tipo2 ? `<span class="tipo-tag">${pokemon.tipo2}</span>` : ''}
+            </div>
+            <button class="btn-excluir" onclick="excluirPokemon(${pokemon.id})">Liberar</button>
+          `;
+          lista.appendChild(card);
+        });
+      } catch (erro) {
+        lista.innerHTML = '<p>Erro ao carregar a Pokédex. Verifique a conexão.</p>';
+      }
+    }
+
+    // Evento de envio do formulário (Adicionar)
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const dados = {
+        nome: document.getElementById('nome').value,
+        sexo: document.getElementById('sexo').value,
+        tipo1: document.getElementById('tipo1').value,
+        tipo2: document.getElementById('tipo2').value,
+        imagem: document.getElementById('imagem').value
+      };
+
+      try {
+        const resposta = await fetch('/api/pokemons', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dados)
+        });
+
+        if (resposta.ok) {
+          form.reset(); // Limpa os campos
+          buscarPokemons(); // Atualiza a lista na tela
+        }
+      } catch (erro) {
+        alert('Erro ao salvar o Pokémon.');
+      }
+    });
+
+    // Função para excluir o Pokémon do banco de dados
+    async function excluirPokemon(id) {
+      if (confirm('Deseja mesmo liberar este Pokémon de volta para a natureza?')) {
+        try {
+          const resposta = await fetch(`/api/pokemons/${id}`, { method: 'DELETE' });
+          if (resposta.ok) {
+            buscarPokemons(); // Atualiza a tela
+          }
+        } catch (erro) {
+          alert('Erro ao excluir o Pokémon.');
+        }
+      }
+    }
+
+    // Carrega a lista assim que a página abre
+    buscarPokemons();
+  </script>
+</body>
+</html>
